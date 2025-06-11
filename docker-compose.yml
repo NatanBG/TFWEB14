@@ -1,0 +1,86 @@
+services:
+
+  #NODE WEB
+  node-web-aula-14-tf-container:
+    build:
+      context: .
+      dockerfile: docker/node22-web/Dockerfile.dev
+    env_file: .env
+    volumes:
+      - .:/app
+      - node-modules-aula-14-tf-volume:/app/node_modules
+    restart: unless-stopped
+    environment:
+      - IS_CONTAINER=TRUE
+      - POSTGRES_HOST=postgres_host
+      - POSTGRES_PORT=5432
+    expose:
+      - ${NODE_PORT}
+    networks:
+      - project-aula-14-tf-network
+    depends_on:
+      - postgres-aula-14-tf-container
+
+  #NODE CLI
+  cli-container:
+    build:
+      context: .
+      dockerfile: docker/node22-cli/Dockerfile
+    env_file: .env
+    volumes:
+      - .:/app
+      - node-modules-aula-14-tf-volume:/app/node_modules
+    environment:
+      - IS_CONTAINER=TRUE
+      - POSTGRES_HOST=postgres_host
+      - POSTGRES_PORT=5432
+    networks:
+      - project-aula-14-tf-network
+    depends_on:
+      - postgres-aula-14-tf-container
+
+  #NGINX
+  nginx-aula-14-tf-container:
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    ports:
+      - "${PORT}:80"
+    volumes:
+      - ./public:/var/www/public
+    depends_on:
+      - node-web-aula-14-tf-container
+    networks:
+      project-aula-14-tf-network:
+        aliases:
+            - web_host
+
+  #POSTGRES
+  postgres-aula-14-tf-container:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      TZ: America/Sao_Paulo
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - pgdata-aula-14-tf-volume:/var/lib/postgresql/data
+      - ./docker/postgres/init:/docker-entrypoint-initdb.d
+    networks:
+      project-aula-14-tf-network:
+        aliases:
+          - postgres_host
+
+
+#OTHERS
+
+networks:
+  project-aula-14-tf-network:
+    driver: bridge
+
+volumes:
+  pgdata-aula-14-tf-volume:
+  node-modules-aula-14-tf-volume:
